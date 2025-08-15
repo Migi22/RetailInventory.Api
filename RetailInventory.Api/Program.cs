@@ -1,25 +1,38 @@
+using Microsoft.EntityFrameworkCore;
+using RetailInventory.Api.Data;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// 1) Register services (DI container)
+builder.Services.AddControllers();              // MVC controllers (attribute-routed APIs)
+builder.Services.AddEndpointsApiExplorer();     // Exposes endpoints for Swagger
+builder.Services.AddSwaggerGen();               // Generates OpenAPI/Swagger doc
 
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// 2) EF Core: wire DbContext to SQL Server
+var conn = builder.Configuration.GetConnectionString("DefaultConnection");
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// 3) Dev-time helpers (Swagger) + DB migrations
 if (app.Environment.IsDevelopment())
 {
+    // Apply EF Core migrations automatically in Development
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// 4) Middleware pipeline
 app.UseHttpsRedirection();
 
+// Keep Authorization middleware
 app.UseAuthorization();
 
+// 5) Map controller endpoints (attribute routes)
 app.MapControllers();
 
 app.Run();
