@@ -22,6 +22,9 @@ if (app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
+    // Call SeedData here
+    AppDbContext.SeedData(db);
+
     app.UseSwagger();
     app.UseSwaggerUI();
 }
