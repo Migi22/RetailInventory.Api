@@ -32,7 +32,7 @@ namespace RetailInventory.Api.Controllers
         }
 
         // PUT: api/products/22
-        [HttpPost("{id:int}")]
+        [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, Product product)
         {
             if (id != product.Id) return BadRequest();
