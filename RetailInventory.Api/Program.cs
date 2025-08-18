@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RetailInventory.Api.Data;
+using RetailInventory.Api.Models;
+using BCrypt.Net;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,7 +24,7 @@ if (app.Environment.IsDevelopment())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.Migrate();
 
-    // Call SeedData here
+    // Call SeedData
     AppDbContext.SeedData(db);
 
     app.UseSwagger();

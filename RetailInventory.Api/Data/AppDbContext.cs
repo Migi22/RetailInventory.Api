@@ -9,6 +9,8 @@ namespace RetailInventory.Api.Data
             : base(options) { }
 
         public DbSet<Product> Products { get; set; }
+        public DbSet<User> Users { get; set; }
+        public DbSet<Store> Stores { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -18,6 +20,7 @@ namespace RetailInventory.Api.Data
         // Custom method for seeding
         public static void SeedData(AppDbContext context)
         {
+            // Seed Products
             if (!context.Products.Any())
             {
                 context.Products.AddRange(
@@ -25,9 +28,40 @@ namespace RetailInventory.Api.Data
                     new Product { Name = "Sample Product B", Quantity = 5, Price = 55.00m },
                     new Product { Name = "Sample Product C", Quantity = 20, Price = 200.00m }
                 );
-
-                context.SaveChanges();
             }
+
+            // Seed Stores and Users
+            if (!context.Stores.Any())
+            {
+                var demoStore = new Store { Name = "Demo Store", Address = "123 Main" };
+
+                context.Stores.Add(demoStore);
+                context.Users.AddRange(
+                    new User
+                    {
+                        Username = "sysadmin",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+                        Role = "SystemAdmin"
+                    },
+                    new User
+                    {
+                        Username = "owner1",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("owner123"),
+                        Role = "Owner",
+                        Store = demoStore
+                    },
+                    new User
+                    {
+                        Username = "staff1",
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword("staff123"),
+                        Role = "Staff",
+                        Store = demoStore
+                    }
+                );
+            }
+
+            context.SaveChanges(); // commit everything
         }
+
     }
 }
