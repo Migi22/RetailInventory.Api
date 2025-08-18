@@ -218,8 +218,8 @@ node_modules/
 obj/
 
 # App config secrets
-appsettings.*.json
-appsettings.Development.json
+**/appsettings.*.json
+**/appsettings.Development.json
 
 # Environment files
 .env
