@@ -2,6 +2,12 @@ using Microsoft.EntityFrameworkCore;
 using RetailInventory.Api.Data;
 using RetailInventory.Api.Models;
 using BCrypt.Net;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+{
+    
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +19,43 @@ builder.Services.AddSwaggerGen();               // Generates OpenAPI/Swagger doc
 // 2) EF Core: wire DbContext to SQL Server
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
+
+// 2.5) JWT Authentication
+// --- JWT Authentication Configuration ---
+builder.Configuration
+    .AddJsonFile("appsettings.json")
+    .AddUserSecrets<Program>()
+    .AddEnvironmentVariables();
+
+var jwtKey = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrEmpty(jwtKey))
+{
+    throw new InvalidOperationException(
+        "JWT Key is not configured. Please set 'Jwt:Key' in appsettings.json or in user secrets."
+    );
+}
+
+var key = Encoding.UTF8.GetBytes(jwtKey);
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key)
+    };
+});
+
+builder.Services.AddAuthorization();
 
 var app = builder.Build();
 
@@ -33,6 +76,9 @@ if (app.Environment.IsDevelopment())
 
 // 4) Middleware pipeline
 app.UseHttpsRedirection();
+
+// JWT Authentication middleware
+app.UseAuthentication();
 
 // Keep Authorization middleware
 app.UseAuthorization();
