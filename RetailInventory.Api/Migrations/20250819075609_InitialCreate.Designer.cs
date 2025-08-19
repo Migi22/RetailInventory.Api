@@ -11,8 +11,8 @@ using RetailInventory.Api.Data;
 namespace RetailInventory.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250818132200_AddStoreAndUser")]
-    partial class AddStoreAndUser
+    [Migration("20250819075609_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -43,7 +43,12 @@ namespace RetailInventory.Api.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
 
                     b.ToTable("Products");
                 });
@@ -100,6 +105,17 @@ namespace RetailInventory.Api.Migrations
                     b.HasIndex("StoreId");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("RetailInventory.Api.Models.Product", b =>
+                {
+                    b.HasOne("RetailInventory.Api.Models.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
                 });
 
             modelBuilder.Entity("RetailInventory.Api.Models.User", b =>

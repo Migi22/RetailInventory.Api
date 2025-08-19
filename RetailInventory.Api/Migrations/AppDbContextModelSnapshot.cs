@@ -40,7 +40,12 @@ namespace RetailInventory.Api.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
+                    b.Property<int>("StoreId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("StoreId");
 
                     b.ToTable("Products");
                 });
@@ -97,6 +102,17 @@ namespace RetailInventory.Api.Migrations
                     b.HasIndex("StoreId");
 
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("RetailInventory.Api.Models.Product", b =>
+                {
+                    b.HasOne("RetailInventory.Api.Models.Store", "Store")
+                        .WithMany()
+                        .HasForeignKey("StoreId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Store");
                 });
 
             modelBuilder.Entity("RetailInventory.Api.Models.User", b =>
