@@ -15,6 +15,9 @@ namespace RetailInventory.Api.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Apply global query filters for soft delete
+            modelBuilder.Entity<Store>().HasQueryFilter(s => !s.IsDeleted);
         }
 
         // Custom method for seeding

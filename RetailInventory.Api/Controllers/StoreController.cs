@@ -33,8 +33,17 @@ namespace RetailInventory.Api.Controllers
         // GET: api/stores
         [HttpGet]
         [Authorize(Roles = "SystemAdmin")] // only the system admin can view all stores
-        public async Task<ActionResult<IEnumerable<Store>>> GetAllStores()
+        public async Task<ActionResult<IEnumerable<Store>>> GetAllStores(bool includeDeleted = false)
         {
+            if (includeDeleted)
+            {
+                // Admin can view all, including soft-deleted
+                return await _context.Stores
+                    .IgnoreQueryFilters()
+                    .ToListAsync();
+            }
+
+            // Default: show only active (not deleted)
             return await _context.Stores.ToListAsync();
         }
 
@@ -102,22 +111,34 @@ namespace RetailInventory.Api.Controllers
 
         // DELETE: api/stores/{id}
         [HttpDelete("{id}")]
-        [Authorize(Roles = "SystemAdmin,Owner")]
+        [Authorize(Roles = "SystemAdmin")]
         public async Task<IActionResult> DeleteStore(int id)
         {
             var store = await _context.Stores.FindAsync(id);
             if (store == null) return NotFound();
 
-            if (User.IsInRole("Owner"))
-            {
-                var userStoreId = GetUserStoreId();
-                if (userStoreId == null || store.Id != userStoreId.Value)
-                {
-                    return Forbid();
-                }
-            }
+            store.IsDeleted = true; // Soft delete
+            await _context.SaveChangesAsync();
 
-            _context.Stores.Remove(store);
+            return NoContent();
+        }
+
+        // PATCH: api/stores/{id}/restore
+        [HttpPatch("{id}/restore")]
+        [Authorize(Roles = "SystemAdmin")]
+        public async Task<IActionResult> RestoreStore(int id)
+        {
+            var store = await _context.Stores
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(s => s.Id == id && s.IsDeleted);
+
+            if (store == null) 
+                return NotFound("Store not found or not deleted.");
+
+            if (!store.IsDeleted)
+                return BadRequest("Store is already active.");
+
+            store.IsDeleted = false; // Restore the store
             await _context.SaveChangesAsync();
 
             return NoContent();
