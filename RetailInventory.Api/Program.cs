@@ -65,7 +65,10 @@ if (app.Environment.IsDevelopment())
     // Apply EF Core migrations automatically in Development
     using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+
+    // Reset DB each run in dev mode
+    db.Database.EnsureDeleted(); // drop existing database
+    db.Database.EnsureCreated(); // create new database
 
     // Call SeedData
     AppDbContext.SeedData(db);
