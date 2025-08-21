@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace RetailInventory.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/stores")]
     public class StoreController : ControllerBase
     {
         private readonly AppDbContext _context;

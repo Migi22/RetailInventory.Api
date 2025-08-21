@@ -8,7 +8,7 @@ using System.Security.Claims;
 namespace RetailInventory.Api.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/products")]
     [Authorize(Roles = "Owner,Staff,SystemAdmin")]
     public class ProductController(AppDbContext db) : ControllerBase
     {
