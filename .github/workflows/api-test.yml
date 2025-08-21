@@ -25,6 +25,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Install sqlcmd
+        run: sudo apt-get update && sudo apt-get install -y mssql-tools18 unixodbc-dev
+        env:
+          ACCEPT_EULA: "Y"
+      
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
@@ -43,6 +48,12 @@ jobs:
             echo "SQL Server not ready yet..."
             sleep 5
           done
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
       - name: Apply migrations
         run: dotnet ef database update --project RetailInventory.Api/RetailInventory.Api.csproj
