@@ -49,6 +49,12 @@ jobs:
             sleep 5
           done
 
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef
+
+      - name: Add dotnet tools to PATH
+        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
       - name: Apply migrations
         run: dotnet ef database update --project RetailInventory.Api/RetailInventory.Api.csproj
         env:
