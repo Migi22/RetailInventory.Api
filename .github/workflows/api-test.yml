@@ -36,14 +36,31 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
+      - name: Wait for SQL Server
+        run: |
+          for i in {1..20}; do
+            /opt/mssql-tools18/bin/sqlcmd -S localhost,1433 -U sa -P "${{ secrets.DB_PASSWORD }}" -C -Q "SELECT 1" && break
+            echo "SQL Server not ready yet..."
+            sleep 5
+          done
+
+      - name: Apply migrations
+        run: dotnet ef database update --project RetailInventory.Api/RetailInventory.Api.csproj
+        env:
+          ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=RetailInventoryDB;User Id=sa;Password=${{ secrets.DB_PASSWORD }};TrustServerCertificate=True;"
+
       - name: Run API in background
-        run: dotnet run --project RetailInventory.Api/RetailInventory.Api.csproj &
+        run: |
+          dotnet run --project RetailInventory.Api/RetailInventory.Api.csproj &
+          sleep 20
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=RetailInventoryDB;User Id=sa;Password=${{ secrets.DB_PASSWORD }};TrustServerCertificate=True;"
-          Jwt_Key: ${{ secrets.JWT_KET }}
+          Jwt_Key: ${{ secrets.JWT_KEY }}
+
       - name: Install Newman
         run: npm install -g newman
 
       - name: Run Postman Tests
-        run: newman run ./postman/RetailInventory.postman_collection.json
+        run: |
+          newman run ./postman/RetailInventory.postman_collection.json
