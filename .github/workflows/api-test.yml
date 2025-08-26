@@ -67,7 +67,7 @@ jobs:
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=RetailInventoryDB;User Id=sa;Password=${{ secrets.DB_PASSWORD }};TrustServerCertificate=True;"
-          Jwt_Key: ${{ secrets.JWT_KEY }}
+          Jwt__Key: ${{ secrets.JWT_KEY }}
 
       - name: Install Newman
         run: npm install -g newman
@@ -75,7 +75,7 @@ jobs:
       - name: Wait for API
         run: |
           for i in {1..30}; do
-            if curl -sSf http://localhost:5000/swagger > /dev/null; then
+            if curl -sSf http://localhost:5000/swagger/index.html > /dev/null; then
               echo "API is up!"
               exit 0
             fi
