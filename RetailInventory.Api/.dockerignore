@@ -1,0 +1,28 @@
+# .dockerignore
+
+# Build output
+bin/
+obj/
+out/
+*.dll
+*.exe
+*.pdb
+
+# User files & IDE stuff
+.vs/
+*.user
+*.suo
+
+# Databases / local data
+*.mdf
+*.ldf
+*.db
+
+# Git
+.git
+.gitignore
+
+# OS files
+*.log
+*.DS_Store
+Thumbs.db
