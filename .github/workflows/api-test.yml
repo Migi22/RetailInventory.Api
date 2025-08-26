@@ -72,6 +72,19 @@ jobs:
       - name: Install Newman
         run: npm install -g newman
 
+      - name: Wait for API
+        run: |
+          for i in {1..20}; do
+            curl -f http://localhost:5000/swagger || true
+            if [ $? -eq 0 ]; then
+              echo "API is up!"
+              exit 0
+            fi
+            echo "Waiting for API..."
+            sleep 5
+          done
+          exit 1
+
       - name: Run Postman Tests
         run: |
-          newman run ./postman/RetailInventory.postman_collection.json
+          newman run ./postman/RetailInventory.postman_collection.json --env-var baseUrl=http://localhost:5000
