@@ -62,7 +62,8 @@ jobs:
 
       - name: Run API in background
         run: |
-          dotnet run --project RetailInventory.Api/RetailInventory.Api.csproj --urls "http://localhost:5000" > api.log 2>&1 &
+          dotnet run --project RetailInventory.Api/RetailInventory.Api.csproj --urls "http://0.0.0.0:5000" > api.log 2>&1 &
+          sleep 20
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=RetailInventoryDB;User Id=sa;Password=${{ secrets.DB_PASSWORD }};TrustServerCertificate=True;"
@@ -88,10 +89,13 @@ jobs:
         run: |
           newman run RetailInventory.Api/postman/Retail_Inventory_API.postman_collection.json --env-var baseUrl=http://localhost:5000
 
-      # ✅ Optional but very useful for debugging
+      # for debugging
       - name: Upload API logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: api-logs
           path: api.log
+
+      - name: Show API logs
+        run: cat api.log
