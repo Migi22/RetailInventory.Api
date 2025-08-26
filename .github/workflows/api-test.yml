@@ -87,4 +87,4 @@ jobs:
 
       - name: Run Postman Tests
         run: |
-          newman run ./postman/RetailInventory.postman_collection.json --env-var baseUrl=http://localhost:5000
+          newman run ./postman/Retail Inventory API.postman_collection.json --env-var baseUrl=http://localhost:5000
