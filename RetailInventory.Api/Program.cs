@@ -16,9 +16,10 @@ builder.Services.AddControllers();              // MVC controllers (attribute-ro
 builder.Services.AddEndpointsApiExplorer();     // Exposes endpoints for Swagger
 builder.Services.AddSwaggerGen();               // Generates OpenAPI/Swagger doc
 
-// 2) EF Core: wire DbContext to SQL Server
+// 2) EF Core: wire DbContext to SQL Server (enable retry for transient errors)
 var conn = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(conn));
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseSqlServer(conn, sql => sql.EnableRetryOnFailure()));
 
 // 2.5) JWT Authentication
 // --- JWT Authentication Configuration ---
@@ -76,9 +77,36 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    // In non-development (e.g., Docker container), apply migrations on startup
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    var retries = 10;
+    while (retries > 0)
+    {
+        try
+        {
+            db.Database.Migrate(); // or EnsureCreated() if you want
+            AppDbContext.SeedData(db); // optional: seed data
+            break;
+        }
+        catch (Exception ex)
+        {
+            retries--;
+            Console.WriteLine($"DB not ready yet. Retrying in 5s... ({retries} retries left)");
+            Thread.Sleep(5000); // wait 5 seconds
+        }
+    }
+}
 
 // 4) Middleware pipeline
-app.UseHttpsRedirection();
+// Avoid HTTPS redirection in container unless HTTPS is configured
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // JWT Authentication middleware
 app.UseAuthentication();
@@ -87,6 +115,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // 5) Map controller endpoints (attribute routes)
+app.MapGet("/health", () => Results.Ok("OK"));
 app.MapControllers();
 
 app.Run();
