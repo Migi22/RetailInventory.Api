@@ -4,7 +4,7 @@
 		"name": "Retail Inventory API",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "47477928",
-		"_collection_link": "https://migi22-7808443.postman.co/workspace/ada63c15-84c5-40bc-8792-b1ee9ebad1a9/collection/47477928-59ae0c05-a49d-49a0-89fb-05a0cc63540e?action=share&source=collection_link&creator=47477928"
+		"_collection_link": "https://migi22-7808443.postman.co/workspace/Lance-Miguel-Damalerio's-Worksp~ada63c15-84c5-40bc-8792-b1ee9ebad1a9/collection/47477928-59ae0c05-a49d-49a0-89fb-05a0cc63540e?action=share&source=collection_link&creator=47477928"
 	},
 	"item": [
 		{
@@ -25,7 +25,10 @@
 									"    pm.expect(json).to.have.property(\"token\");",
 									"    pm.expect(json.role).to.eql(\"SystemAdmin\");",
 									"});",
-									"pm.collectionVariables.set(\"sysadminToken\", pm.response.json().token);"
+									"pm.collectionVariables.set(\"sysadminToken\", pm.response.json().token);",
+									"",
+									"// For restoring a store from inactivity",
+									"pm.collectionVariables.set(\"toPatchId\", \"2\");"
 								],
 								"type": "text/javascript",
 								"packages": {}
@@ -66,15 +69,24 @@
 							"script": {
 								"exec": [
 									"pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
+									"",
 									"const json = pm.response.json();",
 									"pm.collectionVariables.set(\"ownerToken\", json.token);",
+									"",
+									"// helper: base64 decode in Postman/Node-safe way",
+									"function base64Decode(str) {",
+									"    return Buffer.from(str, 'base64').toString('binary');",
+									"}",
 									"",
 									"// decode JWT to get StoreId",
 									"function parseJwt(t){",
 									"  const p = t.split('.')[1];",
 									"  const b = p.replace(/-/g,'+').replace(/_/g,'/');",
-									"  return JSON.parse(decodeURIComponent(atob(b).split('').map(c => '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));",
+									"  return JSON.parse(decodeURIComponent(base64Decode(b).split('').map(c =>",
+									"    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)",
+									"  ).join('')));",
 									"}",
+									"",
 									"const payload = parseJwt(json.token);",
 									"if (payload.StoreId) {",
 									"  pm.collectionVariables.set(\"ownerStoreId\", String(payload.StoreId));",
@@ -121,13 +133,21 @@
 								"exec": [
 									"pm.test(\"200 OK\", () => pm.response.to.have.status(200));",
 									"const json = pm.response.json();",
+									"",
 									"pm.collectionVariables.set(\"staffToken\", json.token);",
+									"",
+									"// helper: base64 decode in Postman/Node-safe way",
+									"function base64Decode(str) {",
+									"    return Buffer.from(str, 'base64').toString('binary');",
+									"}",
 									"",
 									"// decode JWT to get StoreId",
 									"function parseJwt(t){",
 									"  const p = t.split('.')[1];",
 									"  const b = p.replace(/-/g,'+').replace(/_/g,'/');",
-									"  return JSON.parse(decodeURIComponent(atob(b).split('').map(c => '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)).join('')));",
+									"  return JSON.parse(decodeURIComponent(base64Decode(b).split('').map(c =>",
+									"    '%' + ('00'+c.charCodeAt(0).toString(16)).slice(-2)",
+									"  ).join('')));",
 									"}",
 									"const payload = parseJwt(json.token);",
 									"if (payload.StoreId) {",
@@ -175,9 +195,12 @@
 								"exec": [
 									"pm.test(\"Unauthorized when invalid\", function () {",
 									"    pm.response.to.have.status(401);",
-									"});"
+									"});",
+									"",
+									"pm.collectionVariables.set(\"wrongStoreId\", \"3\");"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -213,22 +236,65 @@
 			"name": "Stores",
 			"item": [
 				{
-					"name": "Get Store by Id",
+					"name": "Get All Stores",
 					"item": [
 						{
-							"name": "Correct Store",
+							"name": "Include isDeleted",
 							"item": [
 								{
-									"name": "Owner",
+									"name": "Admin (includeDeleted = True)",
 									"event": [
 										{
 											"listen": "test",
 											"script": {
 												"exec": [
-													"pm.test(\"200 OK\", () => pm.response.to.have.status(200));\r",
-													"const json = pm.response.json();\r",
-													"pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"ownerStoreId\"));\r",
-													""
+													"pm.test(\"Status code 200 OK\", () => pm.response.to.have.status(200));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{sysadminToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores?includeDeleted=true",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores"
+											],
+											"query": [
+												{
+													"key": "includeDeleted",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Owner (includeDeleted = True) Copy",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code 403 Forbidden\", () => pm.response.to.have.status(403));"
 												],
 												"type": "text/javascript",
 												"packages": {}
@@ -249,14 +315,104 @@
 										"method": "GET",
 										"header": [],
 										"url": {
-											"raw": "{{baseUrl}}/api/stores/{{ownerStoreId}}",
+											"raw": "{{baseUrl}}/api/stores?includeDeleted=true",
 											"host": [
 												"{{baseUrl}}"
 											],
 											"path": [
 												"api",
-												"stores",
-												"{{ownerStoreId}}"
+												"stores"
+											],
+											"query": [
+												{
+													"key": "includeDeleted",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Staff (includeDeleted = True)",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code 403 Forbidden\", () => pm.response.to.have.status(403));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{staffToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores?includeDeleted=true",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores"
+											],
+											"query": [
+												{
+													"key": "includeDeleted",
+													"value": "true"
+												}
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "No token (includeDeleted = True) Copy",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code 401 Unauthorized\", () => pm.response.to.have.status(401));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "noauth"
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores?includeDeleted=true",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores"
+											],
+											"query": [
+												{
+													"key": "includeDeleted",
+													"value": "true"
+												}
 											]
 										}
 									},
@@ -274,11 +430,9 @@
 											"pm.test(\"Status is 200\", function () {\r",
 											"    pm.response.to.have.status(200);\r",
 											"});\r",
-											"pm.test(\"Has store name\", function () {\r",
-											"    let jsonData = pm.response.json();\r",
-											"    pm.expect(jsonData[0]).to.have.property(\"name\");\r",
-											"})\r",
-											""
+											"pm.test(\"Response is an array\", function () {\r",
+											"    pm.expect(pm.response.json()).to.be.an(\"array\");\r",
+											"});"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -429,68 +583,213 @@
 								}
 							},
 							"response": []
-						},
-						{
-							"name": "Owner",
-							"event": [
-								{
-									"listen": "test",
-									"script": {
-										"exec": [
-											"pm.test(\"200 OK\", () => pm.response.to.have.status(200));\r",
-											"const json = pm.response.json();\r",
-											"pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"ownerStoreId\"));\r",
-											""
-										],
-										"type": "text/javascript",
-										"packages": {}
-									}
-								}
-							],
-							"request": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{ownerToken}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{baseUrl}}/api/stores/{{ownerStoreId}}",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"api",
-										"stores",
-										"{{ownerStoreId}}"
-									]
-								}
-							},
-							"response": []
 						}
 					]
 				},
 				{
-					"name": "Get All Stores",
+					"name": "Get Store by Id",
 					"item": [
 						{
-							"name": "Include isDeleted",
-							"item": []
+							"name": "Correct Store",
+							"item": [
+								{
+									"name": "Owner",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"200 OK\", () => pm.response.to.have.status(200));\r",
+													"const json = pm.response.json();\r",
+													"pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"ownerStoreId\"));\r",
+													""
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{ownerToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores/{{ownerStoreId}}",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores",
+												"{{ownerStoreId}}"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Staff",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code 200 OK\", function () {\r",
+													"    pm.response.to.have.status(200);\r",
+													"});\r",
+													"\r",
+													"const json = pm.response.json();\r",
+													"pm.expect(String(json.id)).to.eql(pm.collectionVariables.get(\"staffStoreId\"));"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{staffToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores/1",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores",
+												"1"
+											]
+										}
+									},
+									"response": []
+								}
+							]
 						},
 						{
-							"name": "Admin (includeDeleted = True)",
+							"name": "Wrong Store",
+							"item": [
+								{
+									"name": "Owner",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code 403 Forbidden\", function () {\r",
+													"   pm.response.to.have.status(403); \r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{ownerToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores/2",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores",
+												"2"
+											]
+										}
+									},
+									"response": []
+								},
+								{
+									"name": "Staff",
+									"event": [
+										{
+											"listen": "test",
+											"script": {
+												"exec": [
+													"pm.test(\"Status code 403 Forbidden\", function () {\r",
+													"   pm.response.to.have.status(403); \r",
+													"});"
+												],
+												"type": "text/javascript",
+												"packages": {}
+											}
+										}
+									],
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{staffToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/api/stores/2",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"api",
+												"stores",
+												"2"
+											]
+										}
+									},
+									"response": []
+								}
+							]
+						},
+						{
+							"name": "System Admin",
 							"event": [
 								{
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Status code 200 OK\", () => pm.response.to.have.status(200));"
+											"pm.test(\"Status is 200\", function () {\r",
+											"    pm.response.to.have.status(200);\r",
+											"});\r",
+											"pm.test(\"Has store name\", function () {\r",
+											"    let jsonData = pm.response.json();\r",
+											"    pm.expect(jsonData[0]).to.have.property(\"name\");\r",
+											"})\r",
+											""
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -511,19 +810,56 @@
 								"method": "GET",
 								"header": [],
 								"url": {
-									"raw": "{{baseUrl}}/api/stores?includeDeleted=true",
+									"raw": "{{baseUrl}}/api/stores",
 									"host": [
 										"{{baseUrl}}"
 									],
 									"path": [
 										"api",
 										"stores"
-									],
-									"query": [
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Invalid Store ID",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Owner cannot access invalid store ID\", function () {\r",
+											"    pm.expect([403, 404]).to.include(pm.response.code);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "includeDeleted",
-											"value": "true"
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
 										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{nonExistStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{nonExistStoreId}}"
 									]
 								}
 							},
@@ -560,6 +896,108 @@
 										{
 											"key": "token",
 											"value": "{{sysadminToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"name\": \"Create Test Store via Postman\",\r\n    \"address\": \"123 Postman Street\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Store - owner role",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code 403 Forbidden\", function () {\r",
+											"    pm.response.to.have.status(403);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"name\": \"Create Test Store via Postman\",\r\n    \"address\": \"123 Postman Street\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Store - staff role",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code 403 Forbidden\", function () {\r",
+											"    pm.response.to.have.status(403);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{staffToken}}",
 											"type": "string"
 										}
 									]
@@ -644,6 +1082,168 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Update Store - Staff (Correct Store)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"401 Unauthorized\", function () {\r",
+											"    pm.response.to.have.status(401);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{staffStoreId}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"id\": {{staffStoreId}},\r\n    \"name\": \"Staff try to edit but fail\",\r\n    \"address\": \"Staff try to edit but fail\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{staffStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{staffStoreId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Store - Admin (Correct Store) Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"204 No Content\", function () {\r",
+											"    pm.response.to.have.status(204);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{sysadminToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"id\": {{ownerStoreId}},\r\n    \"name\": \"Owner Store Updated by admin\",\r\n    \"address\": \"Owner Address Update by admin\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{ownerStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{ownerStoreId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Store - Owner (Wrong Store)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Forbidden Update, 403 status code\", function () {\r",
+											"    pm.response.to.have.status(403);\r",
+											"});"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\r\n    \"id\": 3,\r\n    \"name\": \"Owner Store Updated\",\r\n    \"address\": \"Owner Address Update\"\r\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{wrongStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{wrongStoreId}}"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -690,6 +1290,163 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "Delete Store - Owner (Wrong Store)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{wrongStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{wrongStoreId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Store - Staff (Wrong Store)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"403 Forbidden\", () => pm.response.to.have.status(403));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{staffToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{staffStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{staffStoreId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Store - No token (Wrong Store)",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"401 Unauthorized\", () => pm.response.to.have.status(401));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{staffStoreId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{staffStoreId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Store - Admin",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"204 No Content\", () => pm.response.to.have.status(204));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{sysadminToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/2",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"2"
+									]
+								}
+							},
+							"response": []
 						}
 					]
 				},
@@ -703,7 +1460,7 @@
 									"listen": "test",
 									"script": {
 										"exec": [
-											"pm.test(\"Status code 204 OK\", () => pm.request.to.have.status(204));"
+											"pm.test(\"Status code 204 NO Content\", () => pm.response.to.have.status(204));"
 										],
 										"type": "text/javascript",
 										"packages": {}
@@ -737,53 +1494,127 @@
 								}
 							},
 							"response": []
+						},
+						{
+							"name": "PATCH - Store (restore) - Owner",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code 403 Forbidden\", () => pm.response.to.have.status(403));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{ownerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{toPatchId}}/restore",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{toPatchId}}",
+										"restore"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "PATCH - Store (restore) - staff",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code 403 Forbidden\", () => pm.response.to.have.status(403));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{staffToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{toPatchId}}/restore",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{toPatchId}}",
+										"restore"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "PATCH - Store (restore) - staff Copy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"pm.test(\"Status code 401 Unauthorized\", () => pm.response.to.have.status(401));"
+										],
+										"type": "text/javascript",
+										"packages": {}
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "noauth"
+								},
+								"method": "PATCH",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/api/stores/{{toPatchId}}/restore",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"stores",
+										"{{toPatchId}}",
+										"restore"
+									]
+								}
+							},
+							"response": []
 						}
 					]
-				},
-				{
-					"name": "System Admin",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"exec": [
-									"pm.test(\"Status is 200\", function () {\r",
-									"    pm.response.to.have.status(200);\r",
-									"});\r",
-									"pm.test(\"Response is an array\", function () {\r",
-									"    pm.expect(pm.response.json()).to.be.an(\"array\");\r",
-									"});"
-								],
-								"type": "text/javascript",
-								"packages": {}
-							}
-						}
-					],
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{sysadminToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/api/stores",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"api",
-								"stores"
-							]
-						}
-					},
-					"response": []
 				}
 			]
 		}
@@ -861,7 +1692,11 @@
 		},
 		{
 			"key": "toPatchId",
-			"value": ""
+			"value": "",
+			"description": {
+				"content": "",
+				"type": "text/plain"
+			}
 		}
 	]
 }
