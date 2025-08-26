@@ -23,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install sqlcmd
         run: sudo apt-get update && sudo apt-get install -y mssql-tools18 unixodbc-dev
@@ -31,7 +31,7 @@ jobs:
           ACCEPT_EULA: "Y"
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
@@ -62,8 +62,7 @@ jobs:
 
       - name: Run API in background
         run: |
-          dotnet run --project RetailInventory.Api/RetailInventory.Api.csproj &
-          sleep 20
+          dotnet run --project RetailInventory.Api/RetailInventory.Api.csproj --urls "http://localhost:5000" > api.log 2>&1 &
         env:
           ASPNETCORE_ENVIRONMENT: Development
           ConnectionStrings__DefaultConnection: "Server=localhost,1433;Database=RetailInventoryDB;User Id=sa;Password=${{ secrets.DB_PASSWORD }};TrustServerCertificate=True;"
@@ -74,17 +73,25 @@ jobs:
 
       - name: Wait for API
         run: |
-          for i in {1..20}; do
-            curl -f http://localhost:5000/swagger || true
-            if [ $? -eq 0 ]; then
+          for i in {1..30}; do
+            if curl -sSf http://localhost:5000/swagger > /dev/null; then
               echo "API is up!"
               exit 0
             fi
             echo "Waiting for API..."
             sleep 5
           done
+          echo "API failed to start in time."
           exit 1
 
       - name: Run Postman Tests
         run: |
-          newman run ./RetailInventory.Api/RetailInventory.Api/postman/Retail_Inventory_API.postman_collection.json --env-var baseUrl=http://localhost:5000
+          newman run RetailInventory.Api/postman/Retail_Inventory_API.postman_collection.json --env-var baseUrl=http://localhost:5000
+
+      # ✅ Optional but very useful for debugging
+      - name: Upload API logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-logs
+          path: api.log
