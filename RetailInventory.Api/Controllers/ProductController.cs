@@ -52,10 +52,10 @@ namespace RetailInventory.Api.Controllers
             var storeIdClaim = User.FindFirstValue("StoreId");
 
             var product = await db.Products.FindAsync(id);
-            
-            if(product is null) return NotFound();
 
-            if (role!= "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
+            if (product is null) return NotFound();
+
+            if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
                 return Forbid("You do not have access to this product.");
 
 
@@ -81,11 +81,11 @@ namespace RetailInventory.Api.Controllers
             {
                 product.StoreId = int.Parse(storeIdClaim);
             }
-                
+
             db.Products.Add(product);
             await db.SaveChangesAsync();
-            
-            return CreatedAtAction(nameof(GetById), new {id = product.Id}, product);
+
+            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
         }
 
         /// <summary>

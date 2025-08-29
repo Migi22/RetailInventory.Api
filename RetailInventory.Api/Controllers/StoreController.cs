@@ -132,7 +132,7 @@ namespace RetailInventory.Api.Controllers
                 .IgnoreQueryFilters()
                 .FirstOrDefaultAsync(s => s.Id == id && s.IsDeleted);
 
-            if (store == null) 
+            if (store == null)
                 return NotFound("Store not found or not deleted.");
 
             if (!store.IsDeleted)
