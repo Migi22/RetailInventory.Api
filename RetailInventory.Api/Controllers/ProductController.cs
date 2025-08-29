@@ -51,7 +51,8 @@ namespace RetailInventory.Api.Controllers
             var role = User.FindFirstValue(ClaimTypes.Role);
             var storeIdClaim = User.FindFirstValue("StoreId");
 
-            var product = await db.Products.FindAsync(id);
+            var product = await db.Products.AsNoTracking()
+                                            .FirstOrDefaultAsync(p => p.Id == id);
 
             if (product is null) return NotFound();
 
@@ -82,6 +83,11 @@ namespace RetailInventory.Api.Controllers
                 product.StoreId = int.Parse(storeIdClaim);
             }
 
+            // explicitly reset audit fields just to be safe
+            product.IsDeleted = false;
+            product.DeletedAt = null;
+            product.DeletedBy = null;
+
             db.Products.Add(product);
             await db.SaveChangesAsync();
 
@@ -109,6 +115,10 @@ namespace RetailInventory.Api.Controllers
             // Check for product ownership
             var existing = await db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
             if (existing is null) return NotFound();
+
+            // Prevent updates to deleted products
+            if (existing.IsDeleted) 
+                return BadRequest("Cannot update a deleted product.");
 
             if (role != "SystemAdmin" && storeIdClaim != null && existing.StoreId != int.Parse(storeIdClaim))
                 return Forbid("You do not have access to modify this product.");
@@ -142,14 +152,24 @@ namespace RetailInventory.Api.Controllers
         {
             var role = User.FindFirstValue(ClaimTypes.Role);
             var storeIdClaim = User.FindFirstValue("StoreId");
+            var username = User.Identity?.Name ?? "Unknown";
 
             var product = await db.Products.FindAsync(id);
             if (product is null) return NotFound();
 
+            // Prevent double deletion
+            if (product.IsDeleted) 
+                return BadRequest("Product is already deleted.");
+
             if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
                 return Forbid("You do not have access to delete this product.");
 
-            db.Products.Remove(product);
+            // Soft delete
+            product.IsDeleted = true;
+            product.DeletedAt = DateTime.UtcNow;
+            product.DeletedBy = username;
+
+            db.Entry(product).State = EntityState.Modified;
             await db.SaveChangesAsync();
 
             return NoContent();
