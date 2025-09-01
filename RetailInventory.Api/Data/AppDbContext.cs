@@ -18,18 +18,19 @@ namespace RetailInventory.Api.Data
 
             // Apply global query filters for soft delete
             modelBuilder.Entity<Store>().HasQueryFilter(s => !s.IsDeleted);
+            modelBuilder.Entity<Product>().HasQueryFilter(p => !p.IsDeleted);
         }
 
         // Custom method for seeding
         public static void SeedData(AppDbContext context)
-{
+        {
             // Ensure a demo store exists
             Store demoStore, secondDemoStore;
             if (!context.Stores.Any())
             {
                 demoStore = new Store { Name = "Demo Store", Address = "123 Main" };
                 secondDemoStore = new Store { Name = "Second Demo Store", Address = "456 Side St." };
-                
+
                 context.Stores.AddRange(demoStore, secondDemoStore);
 
                 // System admin
