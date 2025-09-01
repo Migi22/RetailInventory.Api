@@ -61,7 +61,7 @@ namespace RetailInventory.Api.Controllers
             if (product is null) return NotFound();
 
             if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
-                return Forbid("You do not have access to this product.");
+                return Forbid();
 
 
             return product is null ? NotFound() : product;
@@ -121,11 +121,10 @@ namespace RetailInventory.Api.Controllers
             if (existing is null) return NotFound();
 
             // Prevent updates to deleted products
-            if (existing.IsDeleted) 
-                return BadRequest("Cannot update a deleted product.");
+            if (existing.IsDeleted) return BadRequest();
 
             if (role != "SystemAdmin" && storeIdClaim != null && existing.StoreId != int.Parse(storeIdClaim))
-                return Forbid("You do not have access to modify this product.");
+                return Forbid();
 
             db.Entry(product).State = EntityState.Modified;
 
@@ -164,10 +163,10 @@ namespace RetailInventory.Api.Controllers
 
             // Prevent double deletion
             if (product.IsDeleted) 
-                return BadRequest("Product is already deleted.");
+                return BadRequest();
 
             if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
-                return Forbid("You do not have access to delete this product.");
+                return Forbid();
 
             // Soft delete
             product.IsDeleted = true;
@@ -205,11 +204,11 @@ namespace RetailInventory.Api.Controllers
 
             // Prevent restoring an active product
             if(!product.IsDeleted) 
-                return BadRequest("Product is not deleted.");
+                return BadRequest();
 
             // Check permissions
             if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
-                return Forbid("You do not have access to restore this product.");
+                return Forbid();
 
             // Restore
             product.IsDeleted = false;
