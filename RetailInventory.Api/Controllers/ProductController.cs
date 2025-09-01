@@ -28,12 +28,16 @@ namespace RetailInventory.Api.Controllers
             var query = db.Products.AsNoTracking();
 
             // Owner and Staff are limited to their own store
-            if (role != "SystemAdmin" && storeIdClaim != null)
+            if (role == "Owner" || role == "Staff")
             {
-                int storeId = int.Parse(storeIdClaim);
-                query = query.Where(p => p.StoreId == storeId);
+                if (storeIdClaim != null)
+                {
+                    int storeId = int.Parse(storeIdClaim);
+                    query = query.Where(p => p.StoreId == storeId);
+                }
             }
 
+            // SystemAdmin gets all products, no filter applied
             return await query.ToListAsync();
         }
 
