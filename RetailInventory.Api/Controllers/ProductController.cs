@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using RetailInventory.Api.Data;
 using RetailInventory.Api.Models;
 using System.Security.Claims;
+using RetailInventory.Api.Dtos;
 
 namespace RetailInventory.Api.Controllers
 {
@@ -76,21 +77,27 @@ namespace RetailInventory.Api.Controllers
         /// <returns>The newly created product along with a 201 Created response.</returns>
         // POST: api/products
         [HttpPost]
-        public async Task<ActionResult<Product>> Create(Product product)
+        public async Task<ActionResult<Product>> Create(CreateProductDto dto)
         {
             var role = User.FindFirstValue(ClaimTypes.Role);
             var storeIdClaim = User.FindFirstValue("StoreId");
 
-            // Staff and Owners can only create products for their own store
-            if (role != "SystemAdmin" && storeIdClaim != null)
+            var product = new Product
             {
-                product.StoreId = int.Parse(storeIdClaim);
-            }
+                Name = dto.Name,
+                Quantity = dto.Quantity,
+                Price = dto.Price,
+                StoreId = role == "SystemAdmin"
+                    ? dto.StoreId
+                    : int.Parse(storeIdClaim!)
+            };
 
             // explicitly reset audit fields just to be safe
             product.IsDeleted = false;
             product.DeletedAt = null;
             product.DeletedBy = null;
+            product.RestoredAt = null;
+            product.RestoredBy = null;
 
             db.Products.Add(product);
             await db.SaveChangesAsync();
@@ -109,35 +116,33 @@ namespace RetailInventory.Api.Controllers
         /// 404 NotFound if the product does not exist.</returns>
         // PUT: api/products/22
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, Product product)
+        public async Task<IActionResult> Update(int id, UpdateProductDto dto)
         {
-            if (id != product.Id) return BadRequest();
-
             var role = User.FindFirstValue(ClaimTypes.Role);
             var storeIdClaim = User.FindFirstValue("StoreId");
 
             // Check for product ownership
-            var existing = await db.Products.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+            var existing = await db.Products.FirstOrDefaultAsync(p => p.Id == id);
             if (existing is null) return NotFound();
 
             // Prevent updates to deleted products
             if (existing.IsDeleted) return BadRequest();
 
+            // Ownership check
             if (role != "SystemAdmin" && storeIdClaim != null && existing.StoreId != int.Parse(storeIdClaim))
                 return Forbid();
 
-            db.Entry(product).State = EntityState.Modified;
+            // Apply Changes
+            existing.Name = dto.Name;
+            existing.Quantity = dto.Quantity;
+            existing.Price = dto.Price;
 
-            try
+            if (role == "SystemAdmin" && dto.StoreId.HasValue)
             {
-                await db.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!await db.Products.AnyAsync(p => p.Id == id)) return NotFound();
-                throw;
+                existing.StoreId = dto.StoreId.Value;
             }
 
+            await db.SaveChangesAsync();
             return NoContent();
         }
 
@@ -162,7 +167,7 @@ namespace RetailInventory.Api.Controllers
             if (product is null) return NotFound();
 
             // Prevent double deletion
-            if (product.IsDeleted) 
+            if (product.IsDeleted)
                 return BadRequest();
 
             if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
@@ -199,11 +204,13 @@ namespace RetailInventory.Api.Controllers
             var storeIdClaim = User.FindFirstValue("StoreId");
             var username = User.Identity?.Name ?? "Unknown";
 
-            var product = await db.Products.FirstOrDefaultAsync(p => p.Id == id);
+            var product = await db.Products
+                                    .IgnoreQueryFilters()
+                                    .FirstOrDefaultAsync(p => p.Id == id);
             if (product is null) return NotFound();
 
             // Prevent restoring an active product
-            if(!product.IsDeleted) 
+            if (!product.IsDeleted)
                 return BadRequest();
 
             // Check permissions

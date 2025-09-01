@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace RetailInventory.Api.Models
 {
@@ -36,6 +37,7 @@ namespace RetailInventory.Api.Models
 
         // Navigation
         [ForeignKey("StoreId")]
-        public required Store Store { get; set; }
+        [JsonIgnore]
+        public Store? Store { get; set; }
     }
 }
