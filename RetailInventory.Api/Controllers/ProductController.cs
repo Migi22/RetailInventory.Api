@@ -27,8 +27,8 @@ namespace RetailInventory.Api.Controllers
 
             var query = db.Products.AsNoTracking();
 
-            // Staff are limited to their own store
-            if (role == "SystemAdmin" && storeIdClaim != null)
+            // Owner and Staff are limited to their own store
+            if (role != "SystemAdmin" && storeIdClaim != null)
             {
                 int storeId = int.Parse(storeIdClaim);
                 query = query.Where(p => p.StoreId == storeId);
@@ -140,8 +140,9 @@ namespace RetailInventory.Api.Controllers
 
         /// <summary>
         /// Delete a product by ID.
-        /// Staff and Owners can only delete products for their own store.
         /// SystemAdmin can delete any product.
+        /// Owners can only delete products for their own store.
+        /// Staff cannot delete products.
         /// </summary>
         /// <param name="id">The ID of the product to delete.</param>
         /// <returns>204 NoContent if successful, 403 Forbidden if access is denied, or
@@ -174,6 +175,50 @@ namespace RetailInventory.Api.Controllers
 
             return NoContent();
         }
+
+        /// <summary>
+        /// Restore a soft-deleted product by ID.
+        /// SystemAdmin can restore any product.
+        /// Owners can restore products for their own store.
+        /// Staff cannot restore products.
+        /// </summary>
+        /// <param name="id">The ID of the product to restore.</param>
+        /// <returns>
+        /// 204 NoContent if successful, 400 BadRequest if the product is not deleted,
+        /// 403 Forbidden if access is denied
+        /// </returns>
+        /// PATCH: api/products/22/restore
+        [HttpPatch("{id:int}/restore")]
+        [Authorize(Roles = "Owner,SystemAdmin")]
+        public async Task<IActionResult> Restore(int id)
+        {
+            var role = User.FindFirstValue(ClaimTypes.Role);
+            var storeIdClaim = User.FindFirstValue("StoreId");
+            var username = User.Identity?.Name ?? "Unknown";
+
+            var product = await db.Products.FirstOrDefaultAsync(p => p.Id == id);
+            if (product is null) return NotFound();
+
+            // Prevent restoring an active product
+            if(!product.IsDeleted) 
+                return BadRequest("Product is not deleted.");
+
+            // Check permissions
+            if (role != "SystemAdmin" && storeIdClaim != null && product.StoreId != int.Parse(storeIdClaim))
+                return Forbid("You do not have access to restore this product.");
+
+            // Restore
+            product.IsDeleted = false;
+            product.RestoredAt = DateTime.UtcNow;
+            product.RestoredBy = username;
+
+            // Save changes to database
+            db.Entry(product).State = EntityState.Modified;
+            await db.SaveChangesAsync();
+
+            return NoContent();
+        }
+
 
     }
 }

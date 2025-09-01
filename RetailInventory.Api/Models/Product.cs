@@ -26,10 +26,13 @@ namespace RetailInventory.Api.Models
         [Required]
         public int StoreId { get; set; }
 
-        // Audit
+        // Delete Audit
         public DateTime? DeletedAt { get; set; }
-        
         public string? DeletedBy { get; set; }
+
+        // Restore Audit
+        public DateTime? RestoredAt { get; set; }
+        public string? RestoredBy { get; set; }
 
         // Navigation
         [ForeignKey("StoreId")]
